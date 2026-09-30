@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>信息录入练习 · 柜面交易模拟</title>
+<style>
+:root{
+  --line:#b9c9de; --lab:#1b5fa8; --lab-ro:#333;
+  --ipt-bd:#7f9db9; --ro-bg:#eef0f2; --panel-bg:#f2f4f7;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"宋体",SimSun,"Microsoft YaHei",sans-serif; font-size:12px; color:#222;
+  background:#dfe5ec; display:flex; flex-direction:column; overflow:hidden;
+}
+
+/* ============ 顶部工具条 ============ */
+.topbar{
+  flex:none; display:flex; align-items:center; gap:13px; flex-wrap:wrap;
+  padding:7px 12px; background:#2f6fb5; color:#fff; font-size:12.5px;
+  font-family:"Microsoft YaHei",sans-serif;
+}
+.topbar b{font-size:13.5px;font-weight:600;letter-spacing:.3px}
+.topbar .sep{width:1px;height:16px;background:#ffffff55}
+.topbar label{display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none}
+.topbar select,.topbar button{
+  font-family:inherit;font-size:12px;border-radius:3px;border:1px solid #ffffff55;
+  background:#ffffff1f;color:#fff;padding:2px 6px;cursor:pointer;outline:none;
+}
+.topbar select option{color:#222}
+.topbar button:hover{background:#ffffff33}
+.topbar .grow{margin-left:auto;color:#dbe8f7;font-size:11.5px}
+
+/* ============ 模拟业务窗口 ============ */
+.win{
+  flex:1; min-height:0; margin:9px; display:flex; flex-direction:column;
+  background:#fff; border:1px solid #9fb3c8; box-shadow:0 1px 4px #00000022;
+}
+.titlebar{
+  flex:none; height:28px; display:flex; align-items:center; gap:7px; padding:0 8px;
+  background:linear-gradient(#fbfcfe,#e6ecf4); border-bottom:1px solid #b9c9de;
+}
+.titlebar .tt{font-weight:600;color:#1b3a5c;font-size:12.5px;font-family:"Microsoft YaHei",sans-serif}
+.titlebar .sp{margin-left:auto;display:flex;gap:4px}
+.titlebar .sp i{
+  width:20px;height:16px;border:1px solid #b9c9de;background:#f7f9fc;font-style:normal;
+  font-size:10px;line-height:14px;text-align:center;color:#4a5c70;border-radius:2px;
+}
+
+.winbody{flex:1;min-height:0;display:flex}
+.formcol{flex:1;min-width:0;display:flex;flex-direction:column}
+.formscroll{flex:1;min-height:0;overflow-y:auto;padding:8px 10px 4px}
+.verdict{
+  flex:none;height:92px;border-top:1px solid #dbe3ec;background:#fafbfd;
+  padding:5px 10px;overflow-y:auto;font-size:12px;line-height:1.7;
+}
+.verdict .vrow{display:flex;gap:8px;align-items:baseline}
+.verdict .vok{color:#1a7f37}
+.verdict .vbad{color:#c62828}
+.verdict .vlab{display:inline-block;min-width:96px;color:#555}
+.verdict .vhint{color:#8a97a6}
+
+/* ============ 分组框与字段 ============ */
+fieldset.fs{
+  border:1px solid var(--line); border-radius:2px; margin:0 0 9px; padding:0 0 8px; background:#fff;
+}
+fieldset.fs > legend{
+  margin-left:9px; padding:0 5px; color:var(--lab); font-weight:600;
+  font-size:12px; font-family:"Microsoft YaHei",sans-serif;
+}
+fieldset.fs.nolegend{padding-top:9px}
+.fs-body{display:grid; gap:7px 16px; padding:6px 12px 2px}
+.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.span2{grid-column:span 2}
+.span3{grid-column:span 3}
+
+.fld{display:flex;align-items:center;gap:6px;min-width:0}
+/* 96px + nowrap：最长标签「经办人联系电话」不再折成两行 */
+.fld > label{flex:none;width:96px;text-align:right;color:var(--lab);white-space:nowrap}
+.fld.ro > label{color:var(--lab-ro)}
+.fld.wide > label{width:96px}
+.ipt{
+  flex:1;min-width:0;height:21px;border:1px solid var(--ipt-bd);background:#fff;
+  font-family:inherit;font-size:12px;color:#111;padding:1px 4px;outline:none;
+}
+.ipt:focus{border-color:#2f6fb5;box-shadow:inset 0 0 0 1px #cfe1f5;background:#fffef2}
+.ipt[readonly],.ipt[disabled]{background:var(--ro-bg);color:#333;border-color:#c3ccd6}
+.ipt.ok{border-color:#1a7f37;background:#f1fbf3}
+.ipt.bad{border-color:#c62828;background:#fff3f3}
+select.ipt{padding:0 2px}
+.hint{color:#8a97a6;font-size:11.5px;flex:none}
+.hint.warnc{color:#c62828;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn{
+  font-family:"Microsoft YaHei",sans-serif;font-size:12px;height:22px;padding:0 10px;
+  border:1px solid #8ba7c7;border-radius:2px;cursor:pointer;flex:none;
+  background:linear-gradient(#fdfefe,#e6ecf4);color:#1b3a5c;
+}
+.btn:hover{background:linear-gradient(#ffffff,#dbe6f4)}
+.btn:active{background:#d3e0f0}
+.btn.arrow{width:34px;padding:0;font-weight:700}
+.btn.primary{height:24px;padding:0 16px;border-color:#1f5b9a;color:#fff;
+  background:linear-gradient(#4f8fd0,#2f6fb5)}
+.btn.primary:hover{background:linear-gradient(#5f9ddd,#3679bd)}
+
+/* ============ 右侧栏 ============ */
+.sidecol{
+  flex:none;width:272px;border-left:1px solid var(--line);background:var(--panel-bg);
+  display:flex;flex-direction:column;min-height:0;
+}
+.cdown{
+  flex:none;padding:8px 10px;display:flex;align-items:center;gap:2px;flex-wrap:wrap;
+  border-bottom:1px solid #dbe3ec;font-family:"Microsoft YaHei",sans-serif;
+}
+.cdown .cl{color:#333;margin-right:4px}
+.cd-box{
+  width:15px;height:19px;line-height:18px;text-align:center;background:#fff;
+  border:1px solid #a9bccf;font-family:Consolas,monospace;font-size:12.5px;color:#123;
+}
+.cd-unit{color:#333;margin:0 4px 0 1px}
+.cdown.low .cd-box{color:#c62828;border-color:#e0a0a0;background:#fff5f5}
+
+.qcount{
+  flex:none;display:flex;justify-content:center;gap:34px;padding:7px 10px 4px;
+  border-bottom:1px solid #dbe3ec;
+}
+.qcount .qc{text-align:center}
+.qcount .qc b{display:block;font-family:Consolas,monospace;font-size:16px;color:#123;font-weight:600}
+.qcount .qc i{font-style:normal;color:#5a6b7d;font-size:11px}
+
+.btn-paper{
+  flex:none;margin:7px 10px;height:30px;border:1px solid #1f5b9a;border-radius:2px;cursor:pointer;
+  background:linear-gradient(#4f8fd0,#2f6fb5);color:#fff;font-size:13px;
+  font-family:"Microsoft YaHei",sans-serif;letter-spacing:1px;
+}
+.btn-paper:hover{background:linear-gradient(#5f9ddd,#3679bd)}
+.btn-paper:active{background:#265f9c}
+
+.panel{flex:1;min-height:0;display:flex;flex-direction:column;border-top:1px solid #dbe3ec}
+.panel-title{
+  flex:none;display:flex;align-items:center;gap:6px;padding:6px 10px;
+  background:linear-gradient(#eaf1f9,#dde7f2);border-bottom:1px solid #cfdbe9;
+  color:#1b3a5c;font-weight:600;font-family:"Microsoft YaHei",sans-serif;font-size:12.5px;
+}
+.panel-title .dot{width:11px;height:11px;border-radius:50%;background:#2f6fb5;flex:none}
+.panel-body{flex:1;min-height:0;overflow-y:auto;padding:6px 10px;font-size:12px}
+.prow{display:flex;gap:8px;padding:2.5px 0;border-bottom:1px dashed #e2e8ef}
+.prow .pk{flex:none;width:104px;color:#5a6b7d;text-align:right}
+.prow .pv{flex:1;min-width:0;color:#123;font-family:Consolas,"宋体",monospace;word-break:break-all}
+.prow .pv.cn{font-family:"宋体",SimSun,serif}
+
+/* ============ 底部状态条 ============ */
+.statusbar{
+  flex:none;height:24px;display:flex;align-items:center;gap:10px;padding:0 10px;
+  background:#f7f9fc;border-top:1px solid #dbe3ec;color:#333;
+}
+.statusbar .msg{font-family:"Microsoft YaHei",sans-serif}
+.statusbar .msg.ok{color:#1a7f37}
+.statusbar .msg.err{color:#c62828}
+.statusbar .mode{margin-left:auto;color:#5a6b7d;font-family:"Microsoft YaHei",sans-serif}
+
+/* ============ 成绩单 ============ */
+.overlay{
+  position:fixed;inset:0;background:#0b1c2e88;display:none;align-items:center;justify-content:center;
+  padding:24px;z-index:50;
+}
+.overlay.show{display:flex}
+.sheet{
+  width:100%;max-width:780px;max-height:88vh;display:flex;flex-direction:column;
+  background:#fff;border:1px solid #9fb3c8;box-shadow:0 8px 30px #00000055;
+}
+.sheet h2{
+  flex:none;margin:0;padding:9px 14px;font-size:14px;font-weight:600;color:#fff;
+  background:linear-gradient(#4f8fd0,#2f6fb5);font-family:"Microsoft YaHei",sans-serif;
+}
+.sheet .grid{
+  flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#e3e9f0;
+  border-bottom:1px solid #e3e9f0;
+}
+.sheet .cell{background:#fff;padding:9px 10px;text-align:center}
+.sheet .cell b{display:block;font-family:Consolas,monospace;font-size:19px;color:#123}
+.sheet .cell i{font-style:normal;color:#5a6b7d;font-size:11px}
+.sheet .body{flex:1;min-height:0;overflow-y:auto;padding:10px 14px}
+.sheet h3{font-size:12.5px;color:#1b5fa8;margin:8px 0 5px;font-family:"Microsoft YaHei",sans-serif}
+.sheet .rank{font-size:12px;line-height:1.9}
+.sheet .rank .rk{display:inline-block;width:150px;color:#333}
+.sheet .rank .bar{display:inline-block;height:9px;background:#f0a3a3;vertical-align:middle;border-radius:2px}
+.sheet .detail{font-size:12px;line-height:1.85;color:#333}
+.sheet .detail .dq{color:#1b5fa8}
+.sheet .detail .dm{color:#c62828}
+.sheet .foot{flex:none;display:flex;gap:10px;justify-content:flex-end;padding:9px 14px;border-top:1px solid #e3e9f0;background:#f7f9fc}
+.sheet .foot .btn{height:26px;padding:0 18px}
+</style>
+</head>
+<body>
+
+<!-- ================= 顶部工具条 ================= -->
+<div class="topbar">
+  <b>信息录入练习 · 柜面交易模拟</b>
+  <span class="sep"></span>
+  <label>题型 <select id="optType"></select></label>
+  <label>模式
+    <select id="optMode">
+      <option value="practice" selected>练习（即时纠错）</option>
+      <option value="exam">考试（倒计时+交卷判分）</option>
+    </select>
+  </label>
+  <label>题量
+    <select id="optTotal">
+      <option value="10">10 题</option>
+      <option value="20" selected>20 题</option>
+      <option value="50">50 题</option>
+      <option value="120">120 题</option>
+    </select>
+  </label>
+  <label>考试时长
+    <select id="optTime">
+      <option value="15">15 分钟</option>
+      <option value="30" selected>30 分钟</option>
+      <option value="45">45 分钟</option>
+    </select>
+  </label>
+  <label><input type="checkbox" id="optCard"> 读卡带入证件信息</label>
+  <label><input type="checkbox" id="optSfx" checked> 音效</label>
+  <button id="btnRestart">重新开始</button>
+  <span class="grow">Enter / Tab 跳下一格，最后一格回车提交本题</span>
+</div>
+
+<!-- ================= 模拟业务窗口 ================= -->
+<div class="win">
+  <div class="titlebar">
+    <span class="tt" id="winTitle">长期不动户核销</span>
+    <span class="sp"><i>—</i><i>▢</i><i>✕</i></span>
+  </div>
+
+  <div class="winbody">
+    <div class="formcol">
+      <div class="formscroll" id="formArea"></div>
+      <div class="verdict" id="verdict">
+        <div class="vhint">提交本题后，这里会显示判定结果。</div>
+      </div>
+    </div>
+
+    <div class="sidecol">
+      <div class="cdown" id="cdown">
+        <span class="cl" id="cdLabel">倒计时:</span>
+        <span class="cd-box" id="cd0">0</span><span class="cd-box" id="cd1">0</span><span class="cd-unit">时</span>
+        <span class="cd-box" id="cd2">0</span><span class="cd-box" id="cd3">0</span><span class="cd-unit">分</span>
+        <span class="cd-box" id="cd4">0</span><span class="cd-box" id="cd5">0</span><span class="cd-unit">秒</span>
+      </div>
+      <div class="qcount">
+        <div class="qc"><b id="qCur">1</b><i>当前题目</i></div>
+        <div class="qc"><b id="qTot">20</b><i>题目总数</i></div>
+      </div>
+      <button class="btn-paper" id="btnPaper">提交试卷</button>
+      <div class="panel">
+        <div class="panel-title"><span class="dot"></span><span id="panelName">长期不动户核销</span></div>
+        <div class="panel-body" id="panelBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span class="msg" id="msg">请核对右侧资料，先输入账号并查询。</span>
+    <span class="mode" id="modeInfo"></span>
+  </div>
+</div>
+
+<!-- ================= 成绩单 ================= -->
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <h2>本卷成绩</h2>
+    <div class="grid">
+      <div class="cell"><b id="rQ">0/0</b><i>完全正确题数</i></div>
+      <div class="cell"><b id="rField">0%</b><i>字段正确率</i></div>
+      <div class="cell"><b id="rTime">0</b><i>总用时</i></div>
+      <div class="cell"><b id="rAvg">0</b><i>平均每题(秒)</i></div>
+    </div>
+    <div class="body">
+      <h3>最常出错的字段</h3>
+      <div class="rank" id="rRank"></div>
+      <h3>逐题明细</h3>
+      <div class="detail" id="rDetail"></div>
+    </div>
+    <div class="foot">
+      <button class="btn" id="btnAgain">再练一次</button>
+      <button class="btn" id="btnClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+
+/* ================= 基础工具 ================= */
+const rnd  = n => Math.floor(Math.random() * n);
+const pick = a => a[rnd(a.length)];
+const pad2 = n => (n < 10 ? '0' : '') + n;
+function rndDigits(n){ let s = ''; for(let i=0;i<n;i++) s += rnd(10); return s; }
+/* 全角转半角并去空格：输入法常留全角数字，判分与查询都应容忍 */
+function norm(v){
+  return String(v == null ? '' : v)
+    .replace(/[\uFF10-\uFF19\uFF21-\uFF3A]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    .replace(/\u3000/g, ' ')
+    .trim();
+}
+
+/* ================= 造题素材 ================= */
+const SURNAME = '赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华金魏陶姜戚谢邹喻柏水窦章云苏潘葛奚范彭郎鲁韦昌马苗凤花方俞任袁柳鲍史唐费廉岑薛雷贺倪汤';
+const GIVEN = ['伟','芳','娜','敏','静','丽','强','磊','军','洋','勇','艳','杰','娟','涛','明','超','霞','平','刚','丹','雪','鹏','宇','浩','晨','欣','悦','琳','婷','倩','燕','梅','兰','慧','佳','宁','健','波','辉','斌','萍','红','玉','建国','建军','志强','建华','志明','秀英','桂英','文博','嘉怡','思远','雨欣','子豪','晓东','海燕','立新','国华'];
+const cnName = () => SURNAME.charAt(rnd(SURNAME.length)) + pick(GIVEN);
+
+/* 身份证校验位：GB 11643-1999，保证号码真实可校验 */
+const ID_W  = [7,9,10,5,8,4,2,1,6,3,7,9,10,5,8,4,2];
+const ID_CK = '10X98765432';
+function idCheck(first17){
+  let s = 0;
+  for(let i=0;i<17;i++) s += (+first17.charAt(i)) * ID_W[i];
+  return ID_CK.charAt(s % 11);
+}
+function genPerson(){
+  const area = pick(['110101','310104','440305','510107','320106','370102','420106','610113','500106','230103']);
+  const y = 1962 + rnd(42), m = 1 + rnd(12), d = 1 + rnd(28);   // 出生年 1962~2003
+  const birth = '' + y + pad2(m) + pad2(d);
+  const first17 = area + birth + rndDigits(3);
+  return {
+    name: cnName(), idNo: first17 + idCheck(first17), birth: birth,
+    /* 46 周岁以上长期有效，其余按 20 年有效期 */
+    end: (2026 - y) >= 46 ? '20991231' : ('' + (y + 20) + pad2(m) + pad2(d))
+  };
+}
+function money(min, max){
+  return ((min * 100 + rnd((max - min) * 100 + 1)) / 100).toFixed(2);
+}
+function pastDate(){ return '' + (2018 + rnd(8)) + pad2(1 + rnd(12)) + pad2(1 + rnd(28)); }
+function futureDate(){ return '' + (2026 + rnd(10)) + pad2(1 + rnd(12)) + pad2(1 + rnd(28)); }
+/* 大额贷记金额动辄十几位，超过 Number.MAX_SAFE_INTEGER，必须按字符串生成，不能用浮点算 */
+function bigAmount(){
+  const n = 12 + rnd(4);                       // 12~15 位整数
+  let ip = String(1 + rnd(9));
+  for(let i = 1; i < n; i++) ip += rnd(10);
+  return ip + '.' + pad2(rnd(100));
+}
+
+/* 小写金额 → 人民币大写（银行口径）。零的补齐规则最容易出错，已按用例逐条验证：
+   642424944004355.63 → 陆佰肆拾贰万亿肆仟贰佰肆拾玖亿肆仟肆佰万肆仟叁佰伍拾伍元陆角叁分
+   100000001 → 壹亿零壹元整   100010000 → 壹亿零壹万元整   10.05 → 壹拾元零伍分 */
+const RMB_D = '零壹贰叁肆伍陆柒捌玖';
+const RMB_U = ['', '拾', '佰', '仟'];
+const RMB_B = ['', '万', '亿', '万亿', '亿亿'];
+function rmbUpper(v){
+  const s = String(v == null ? '' : v).trim();
+  if(!/^\d+(\.\d+)?$/.test(s)) return '';
+  let [ip, fp] = s.split('.');
+  ip = ip.replace(/^0+/, '') || '0';
+  fp = (fp || '').padEnd(2, '0').slice(0, 2);
+
+  let res = '';
+  if(ip !== '0'){
+    const secs = [];
+    let t = ip;
+    while(t.length){ secs.unshift(t.slice(-4)); t = t.slice(0, -4); }
+    const n = secs.length;
+    for(let i = 0; i < n; i++){
+      const sec = secs[i], unit = RMB_B[n - 1 - i];
+      let part = '', zero = false;
+      for(let j = 0; j < sec.length; j++){
+        const d = +sec.charAt(j), u = RMB_U[sec.length - 1 - j];
+        if(d === 0){ zero = true; continue; }
+        if(zero && (part !== '' || res !== '')) part += '零';
+        zero = false;
+        part += RMB_D.charAt(d) + u;
+      }
+      if(part === ''){
+        if(res !== '') res += '零';              // 整节为零：留零占位，末尾统一清理
+      } else {
+        if(res !== '' && /^0/.test(sec) && !/零$/.test(res)) res += '零';   // 节内高位为零
+        res += part + unit;
+      }
+    }
+    res = res.replace(/零{2,}/g, '零').replace(/零+$/, '');
+  }
+  let out = res ? res + '元' : '零元';
+  const jiao = +fp.charAt(0), fen = +fp.charAt(1);
+  if(jiao === 0 && fen === 0) out += '整';
+  else {
+    out += jiao > 0 ? RMB_D.charAt(jiao) + '角' : '零';
+    if(fen > 0) out += RMB_D.charAt(fen) + '分';
+  }
+  return out;
+}
+
+/* ================= 题型注册表 =================
+   每个题型自带：表单结构（groups/fields）、数据生成（gen）、查询键（queryBy）。
+   字段声明同时决定四件事：表单怎么画、哪些要录入、右侧资料栏显示什么、判分比什么。
+     enter:true → 蓝标签、人工录入、进右侧资料栏、参与判分
+     ro:true    → 黑标签、查询后由系统带出、不判分
+     panelFmt   → 资料栏展示为中文语义值（表单仍填编码）——这是本练习的核心技能点 */
+const CURS = ['人民币','美元','港币','欧元','日元'];
+const MODE_TXT = ['支取销户','转损益','损益支取'];
+const IDTYPE = ['居民身份证','居民身份证','居民身份证','居民身份证','居民身份证','护照','港澳居民来往内地通行证'];
+
+function gen21311(){
+  const p = genPerson();
+  const due = money(1, 300), paid = money(0, Math.floor(+due));
+  const idType = pick(IDTYPE);
+  return {
+    acct: '8' + rndDigits(16), cur: pick(CURS),
+    holder: cnName(),
+    acctStatus: pick(['久悬','不动户','睡眠户']),
+    balance: money(0, 80000),
+    dormStatus: pick(['未处理','已登记','待核销']),
+    dormDate: pastDate(),
+    ccs: pick(['低','中','高']),
+    feeDue: due, feePaid: paid,
+    feeOwe: (Math.round((+due - +paid) * 100) / 100).toFixed(2),   // 欠费=应收-已收，数据自洽
+    backOwe: rnd(2), mode: rnd(3), interest: rnd(2),
+    idType: idType,
+    idNo: idType === '居民身份证' ? p.idNo : (idType === '护照' ? 'E' + rndDigits(8) : 'C' + rndDigits(8)),
+    opName: p.name,
+    idStart: idType === '居民身份证' ? p.birth : pastDate(),
+    idEnd: idType === '居民身份证' ? p.end : ('' + (2030 + rnd(6)) + pad2(1 + rnd(12)) + pad2(1 + rnd(28))),
+    phone: '1' + pick(['3','5','7','8','9']) + rndDigits(9),
+    manager: cnName()
+  };
+}
+
+/* ---------- 题型：确认大额贷记 ----------
+   截图要点：该交易是"确认类"，界面直接带出全部待核对数据，没有查询步骤；
+   下拉项带"编码-名称"（如 A109-委托收款（划回）），资料栏与表单文字一致；
+   金额大写由系统按交易金额自动生成，不用人工录。 */
+const CFM_MODES  = ['1-延时2小时', '0-立即确认', '2-延时24小时'];
+const BIZ_TYPES  = ['A109-委托收款（划回）', 'A100-汇兑', 'A108-托收承付', 'A110-银行汇票', 'A201-委托收款（承付）'];
+const BIZ_KINDS  = ['02103-网银支付', '02101-柜面支付', '02102-手机银行', '02104-第三方支付', '02105-批量代付'];
+const URGENT_FLG = ['普通', '加急'];
+const BANK_HEAD  = ['中国农业银行股份有限公司', '中国工商银行股份有限公司', '中国建设银行股份有限公司',
+                    '中国银行股份有限公司', '交通银行股份有限公司', '江苏银行股份有限公司'];
+const BANK_PLACE = ['宜兴范道', '无锡锡山', '南京鼓楼', '苏州工业园区', '常州武进', '南通崇川', '徐州云龙'];
+
+function genDkdj(){
+  const amount = bigAmount();
+  return {
+    entDate:  futureDate(),
+    paySeq:   rndDigits(20),                                  // 支付交易序号 20 位
+    bankNo:   String(1 + rnd(9)) + rndDigits(12),             // 接收行行号 13 位
+    cfmMode:  pick(CFM_MODES),
+    bankName: pick(BANK_HEAD) + pick(BANK_PLACE) + '支行',
+    bizType:  pick(BIZ_TYPES),
+    bizKind:  pick(BIZ_KINDS),
+    urgent:   pick(URGENT_FLG),
+    amount:   amount,
+    amountUp: rmbUpper(amount),                               // 由金额实时派生，不判分
+    payerAcct: '0' + rndDigits(18),                           // 付款人账号 19 位（首位常为 0）
+    payerName: cnName(),
+    payeeAcct: String(3 + rnd(7)) + rndDigits(18),            // 收款人账号 19 位
+    payeeName: cnName()
+  };
+}
+
+const TYPES = {
+  '21311': {
+    name:'长期不动户核销',
+    queryBy:['acct','cur'],
+    gen: gen21311,
+    fields:{
+      acct:      {label:'账号', enter:true, span:2, hint:'17 位', maxlength:24},
+      cur:       {label:'币种', enter:true, select:CURS, act:'query'},
+      holder:    {label:'户名', ro:true, span:3},
+      acctStatus:{label:'账户状态', ro:true},
+      balance:   {label:'账户余额', ro:true},
+      dormStatus:{label:'不动户状态', ro:true},
+      dormDate:  {label:'转入日期', ro:true},
+      ccs:       {label:'CCS风险等级', ro:true},
+      feeDue:    {label:'应收费用', ro:true},
+      feePaid:   {label:'已收费用', ro:true},
+      feeOwe:    {label:'欠费金额', ro:true},
+      backOwe:   {label:'是否收回欠费', enter:true, span:3, maxlength:1, w:'60px',
+                  hint:'(0：否 1：是)',
+                  warn:'收回欠费时,请外收现金! 如为外币账户请按外币收取相应欠费!',
+                  panelFmt:v => v ? '是' : '否'},
+      mode:      {label:'核销方式', enter:true, span:2, maxlength:1, w:'60px',
+                  hint:'(0: 支取销户 1: 转损益 2: 损益支取)', act:'precheck',
+                  panelFmt:v => MODE_TXT[v]},
+      interest:  {label:'是否计息', enter:true, span:3, maxlength:1, w:'60px',
+                  hint:'(0: 否 1: 是)', panelFmt:v => v ? '是' : '否'},
+      idType:    {label:'证件类型', enter:true, act:'readcard'},
+      idNo:      {label:'证件号码', enter:true},
+      opName:    {label:'经办人姓名', enter:true},
+      idStart:   {label:'证件开始日期', enter:true, maxlength:8},
+      idEnd:     {label:'证件结束日期', enter:true, maxlength:8},
+      phone:     {label:'经办人联系电话', enter:true, maxlength:11},
+      manager:   {label:'客户经理', enter:true}
+    },
+    groups:[
+      {title:'查询条件',             cols:3, cells:[{k:'acct'}, {k:'cur'}]},
+      {title:'不动户信息',           cols:3, cells:[{k:'holder'}, {k:'acctStatus'}, {k:'balance'}, {e:1},
+                                                   {k:'dormStatus'}, {k:'dormDate'}, {k:'ccs'}]},
+      {title:'不动户维护费',         cols:3, cells:[{k:'feeDue'}, {k:'feePaid'}, {k:'feeOwe'}, {k:'backOwe'}]},
+      {title:'核销信息',             cols:3, cells:[{k:'mode'}, {k:'interest'}]},
+      {title:'经办人及客户经理信息', cols:3, cells:[{k:'idType'}, {k:'idNo'}, {k:'opName'},
+                                                   {k:'idStart'}, {k:'idEnd'}, {k:'phone'},
+                                                   {k:'manager'}, {act:'submit'}]}
+    ]
+  },
+
+  'dkdj': {
+    name:'确认大额贷记',
+    queryBy:[],                       // 确认类交易：数据已带出，无查询步骤
+    gen: genDkdj,
+    fields:{
+      entDate:  {label:'委托日期',       enter:true, maxlength:8,  hint:'8 位'},
+      paySeq:   {label:'支付交易序号',   enter:true, maxlength:20, hint:'20 位'},
+      bankNo:   {label:'接收行行号',     enter:true, maxlength:13, hint:'13 位'},
+      cfmMode:  {label:'确认方式',       enter:true, select:CFM_MODES},
+      bankName: {label:'接收行行名',     enter:true, span:2},
+      bizType:  {label:'业务类型',       enter:true, select:BIZ_TYPES},
+      bizKind:  {label:'业务种类',       enter:true, select:BIZ_KINDS},
+      urgent:   {label:'加急标志',       enter:true, select:URGENT_FLG},
+      amount:   {label:'交易金额',       enter:true},
+      amountUp: {label:'金额大写',       ro:true, span:2, deriveFrom:'amount', derive:rmbUpper},
+      payerAcct:{label:'付款人账号',     enter:true, maxlength:19, hint:'19 位'},
+      payerName:{label:'付款人户名',     enter:true},
+      payeeAcct:{label:'收款人账号',     enter:true, maxlength:19, hint:'19 位'},
+      payeeName:{label:'收款人户名',     enter:true}
+    },
+    groups:[
+      {title:'', cols:2, cells:[
+        {k:'entDate'},   {k:'paySeq'},
+        {k:'bankNo'},    {k:'cfmMode'},
+        {k:'bankName'},
+        {k:'bizType'},   {k:'bizKind'},
+        {k:'urgent'},    {k:'amount'},
+        {k:'amountUp'},
+        {k:'payerAcct'}, {k:'payerName'},
+        {k:'payeeAcct'}, {k:'payeeName'},
+        {act:'submit'}
+      ]}
+    ]
+  }
+};
+
+/* 题型定义 → 派生：录入字段顺序、系统带出字段、资料栏内容 */
+const enterKeys = t => Object.keys(t.fields).filter(k => t.fields[k].enter);
+const roKeys    = t => Object.keys(t.fields).filter(k => t.fields[k].ro);
+const fid = k => 'fld_' + k;
+
+const ACTS = {
+  query:    () => '<button class="btn arrow" id="btnQuery" title="查询">&gt;&gt;</button>',
+  precheck: () => '<button class="btn" id="btnPrecheck">销户预检查</button>',
+  readcard: () => '<button class="btn" id="btnReadCard">读取身份证件 (R)</button>',
+  submit:   () => '<button class="btn primary" id="btnSubmit">提交本题</button>'
+};
+
+/* ================= 表单渲染（题型定义驱动） ================= */
+function fieldHTML(k, f){
+  const span = f.span ? ' span' + f.span : '';
+  const ctl = f.select
+    ? '<select id="' + fid(k) + '" class="ipt"' + (f.ro ? ' disabled' : '') + '>' +
+      f.select.map(o => '<option>' + o + '</option>').join('') + '</select>'
+    : '<input id="' + fid(k) + '" class="ipt"' + (f.ro ? ' readonly' : '') +
+      (f.maxlength ? ' maxlength="' + f.maxlength + '"' : '') +
+      (f.w ? ' style="max-width:' + f.w + '"' : '') + ' autocomplete="off" spellcheck="false">';
+  return '<div class="fld' + (f.ro ? ' ro' : '') + (f.span && f.span > 1 ? ' wide' : '') + span + '">' +
+    '<label>' + f.label + '</label>' + ctl +
+    (f.hint ? '<span class="hint">' + f.hint + '</span>' : '') +
+    (f.warn ? '<span class="hint warnc">' + f.warn + '</span>' : '') +
+    (f.act ? ACTS[f.act]() : '') + '</div>';
+}
+function renderForm(t){
+  $('#formArea').innerHTML = t.groups.map(g => {
+    const cells = g.cells.map(c => {
+      if(c.e) return '<div></div>';
+      if(c.act) return '<div class="fld"><label></label>' + ACTS[c.act]() + '</div>';
+      const f = t.fields[c.k];
+      return fieldHTML(c.k, c.span ? Object.assign({}, f, {span:c.span}) : f);
+    }).join('');
+    return '<fieldset class="fs' + (g.title ? '' : ' nolegend') + '">' +
+           (g.title ? '<legend>' + g.title + '</legend>' : '') +
+           '<div class="fs-body c' + (g.cols || 3) + '">' + cells + '</div></fieldset>';
+  }).join('');
+  $('#winTitle').textContent = t.name;    // 标题只显示交易名称，不带"图 xxx"编号
+  $('#panelName').textContent = t.name;
+  bindForm();
+}
+
+/* ================= 状态 ================= */
+let S = {
+  type:'21311', mix:false, mode:'practice', total:20, limitSec:1800,
+  cardAssist:false, sfx:true,
+  cases:[], idx:0, phase:'idle', curType:null,
+  queried:false, used:0, t0:0, tick:null, qStart:0,
+  recs:[], fieldErr:{}
+};
+const curCase    = () => S.cases[S.idx];
+const curData    = () => S.cases[S.idx].d;
+const curTypeDef = () => TYPES[curCase().type];
+
+/* ================= 音效 ================= */
+let actx = null;
+function tone(freq, dur, vol, delay){
+  if(!S.sfx) return;
+  try{
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if(actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime + (delay || 0);
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(freq, t);
+    o.connect(g); g.connect(actx.destination);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.start(t); o.stop(t + dur + 0.03);
+  }catch(e){}
+}
+const sfxOk   = () => { tone(880, 0.09, 0.05, 0); tone(1320, 0.07, 0.035, 0.06); };
+const sfxBad  = () => tone(196, 0.16, 0.06, 0);
+const sfxDone = () => { tone(660, 0.12, 0.05, 0); tone(990, 0.12, 0.05, 0.12); tone(1320, 0.2, 0.05, 0.24); };
+
+/* ================= 渲染 ================= */
+function setMsg(t, kind){
+  const el = $('#msg');
+  el.textContent = t;
+  el.className = 'msg' + (kind ? ' ' + kind : '');
+}
+function renderPanel(){
+  const t = curTypeDef(), d = curData();
+  $('#panelBody').innerHTML = enterKeys(t).map(k => {
+    const f = t.fields[k];
+    const v = String(f.panelFmt ? f.panelFmt(d[k]) : d[k]);
+    return '<div class="prow"><span class="pk">' + f.label + ':</span><span class="pv' +
+      (/[\u4e00-\u9fa5]/.test(v) ? ' cn' : '') + '">' + v + '</span></div>';
+  }).join('');
+}
+function renderSide(){
+  $('#qCur').textContent = Math.min(S.idx + 1, S.cases.length);
+  $('#qTot').textContent = S.cases.length;
+  const tname = S.mix ? '混合练习' : TYPES[S.type].name;
+  $('#modeInfo').textContent = tname + ' · ' +
+    (S.mode === 'exam' ? '考试模式 ' + Math.round(S.limitSec/60) + ' 分钟' : '练习模式 不限时') +
+    ' · ' + S.cases.length + ' 题';
+  $('#cdLabel').textContent = S.mode === 'exam' ? '倒计时:' : '已用时:';
+}
+function clearForm(){
+  /* 下拉框必须用 selectedIndex 复位：赋 value='' 没有任何 option 匹配，
+     selectedIndex 会变成 -1，框里显示空白，查询时永远取不到币种 */
+  enterFields().forEach(f => {
+    const el = $('#' + fid(f.k));
+    if(el.tagName === 'SELECT') el.selectedIndex = 0; else el.value = '';
+    el.classList.remove('ok','bad');
+  });
+  roKeys(curTypeDef()).forEach(k => {
+    const el = $('#' + fid(k));
+    if(!el) return;
+    if(el.tagName === 'SELECT') el.selectedIndex = 0; else el.value = '';
+  });
+  $('#verdict').innerHTML = verdictHint();
+}
+function enterFields(){ return enterKeys(curTypeDef()).map(k => Object.assign({k:k}, curTypeDef().fields[k])); }
+/* 判定区两种模式下的说明必须不一样：考试模式不判对错，若还写着"练习模式下…"，
+   用户提交后永远等不到反馈，会以为这个框没用 */
+function verdictHint(){
+  return S.mode === 'practice'
+    ? '<div class="vhint">练习模式：提交本题后，这里逐字段显示对错与正确答案。</div>'
+    : '<div class="vhint">考试模式不即时判对错：提交后直接进入下一题，交卷后统一给出成绩与逐题错项。</div>';
+}
+function loadQuestion(){
+  const c = curCase();
+  if(S.curType !== c.type){ renderForm(TYPES[c.type]); S.curType = c.type; }
+  clearForm();
+  renderPanel();
+  renderSide();
+  const by = curTypeDef().queryBy || [];
+  if(by.length){
+    setMsg('请核对右侧资料，先输入' + by.map(k => curTypeDef().fields[k].label).join('与') + '并查询。', '');
+    focusField(fid(by[0]));
+    S.queried = false;
+  } else {
+    /* 确认类交易没有查询步骤：数据直接给在右侧，逐项录入即可 */
+    S.queried = true;
+    setMsg('数据已按右侧资料带出，请逐项录入后提交本题。', '');
+    const first = enterKeys(curTypeDef())[0];
+    if(first) focusField(fid(first));
+  }
+  S.qStart = Date.now();
+}
+function focusField(id){ const el = $('#' + id); if(el) el.focus(); }
+
+/* ================= 计时 ================= */
+const cdEls = ['#cd0','#cd1','#cd2','#cd3','#cd4','#cd5'].map(s => $(s));
+function paintClock(sec){
+  const t = pad2(Math.floor(sec/3600)) + pad2(Math.floor(sec % 3600 / 60)) + pad2(sec % 60);
+  cdEls.forEach((el, i) => { el.textContent = t.charAt(i); });
+  $('#cdown').classList.toggle('low', S.mode === 'exam' && sec <= 60);
+}
+function tickTimer(){
+  S.used = Math.floor((Date.now() - S.t0) / 1000);
+  if(S.mode === 'exam'){
+    const left = Math.max(0, S.limitSec - S.used);
+    paintClock(left);
+    if(left <= 0){ setMsg('考试时间到，已自动交卷。', 'err'); finishPaper(true); }
+  } else paintClock(S.used);
+}
+function startTimer(){ stopTimer(); S.t0 = Date.now() - S.used * 1000; S.tick = setInterval(tickTimer, 200); tickTimer(); }
+function stopTimer(){ if(S.tick){ clearInterval(S.tick); S.tick = null; } }   // 句柄必须清空，否则残留定时器会继续跑
+
+/* ================= 查询 ================= */
+function doQuery(){
+  if(S.phase !== 'running') return;
+  const t = curTypeDef(), d = curData(), by = t.queryBy || ['acct'];
+  for(const k of by){
+    if(!norm($('#' + fid(k)).value)){ setMsg('请先输入' + t.fields[k].label + '再查询。', 'err'); focusField(fid(k)); return; }
+  }
+  if(by.every(k => norm($('#' + fid(k)).value) === norm(d[k]))){
+    roKeys(t).forEach(k => { $('#' + fid(k)).value = d[k]; });
+    S.queried = true;
+    setMsg('查询成功：已带出不动户信息与费用信息。', 'ok');
+    sfxOk();
+    const first = enterKeys(t).find(k => by.indexOf(k) < 0);
+    if(first) focusField(fid(first));
+  } else {
+    roKeys(t).forEach(k => { $('#' + fid(k)).value = ''; });
+    S.queried = false;
+    setMsg(t.fields[by[0]].label + '不存在或与' + t.fields[by[1] || by[0]].label + '不符，请核对右侧资料后重试。', 'err');
+    sfxBad();
+  }
+}
+
+/* ================= 判分 ================= */
+function judge(){
+  const d = curData();
+  return enterFields().map(f => {
+    const got = norm($('#' + fid(f.k)).value), want = norm(d[f.k]);
+    return { k:f.k, label:f.label, got:got, want:want, ok:got === want };
+  });
+}
+function renderVerdict(rows){
+  const bad = rows.filter(r => !r.ok), good = rows.filter(r => r.ok);
+  /* 错项排在最前：判定区高度有限，重要信息不能被滚动藏住 */
+  let html = '<div class="vrow"><span class="vlab">本题判定</span><span class="' +
+    (bad.length ? 'vbad' : 'vok') + '">' +
+    (bad.length ? '错 ' + bad.length + ' 项 / 共 ' + rows.length + ' 项'
+                : '全部正确（共 ' + rows.length + ' 项）') + '</span></div>';
+  bad.forEach(r => {
+    html += '<div class="vrow"><span class="vlab">✗ ' + r.label + '</span><span class="vbad">' +
+      (r.got === '' ? '未录入' : r.got) + '</span><span class="vhint">应为 ' +
+      (/[\u4e00-\u9fa5]/.test(r.want) ? r.want : '<b>' + r.want + '</b>') + '</span></div>';
+  });
+  good.forEach(r => {
+    html += '<div class="vrow"><span class="vlab">✓ ' + r.label + '</span><span class="vok">' + r.got + '</span></div>';
+  });
+  $('#verdict').innerHTML = html;
+}
+
+/* ================= 提交 ================= */
+function submitQuestion(){
+  if(S.phase !== 'running') return;
+  const by = curTypeDef().queryBy || [];
+  if(by.length && !S.queried){
+    const m = '请先输入' + curTypeDef().fields[by[0]].label + '并点击 >> 查询，再提交本题。';
+    setMsg(m, 'err');
+    /* 判定区同步显红：这句提示原本只在最底部状态条，很容易被忽略，
+       用户会以为"点了提交没反应" */
+    $('#verdict').innerHTML = '<div class="vrow"><span class="vbad">✗ ' + m + '</span></div>';
+    focusField(fid(by[0]));
+    return;
+  }
+  const rows = judge();
+  const okN = rows.filter(r => r.ok).length;
+  const rec = { q:S.idx + 1, type:curCase().type, ok:okN, total:rows.length,
+                sec:Math.round((Date.now() - S.qStart)/1000), wrong:[] };
+  rows.forEach(r => { if(!r.ok){ rec.wrong.push(r); S.fieldErr[r.label] = (S.fieldErr[r.label] || 0) + 1; } });
+  S.recs.push(rec);
+
+  if(S.mode === 'practice'){
+    rows.forEach(r => {
+      const el = $('#' + fid(r.k));
+      el.classList.remove('ok','bad'); el.classList.add(r.ok ? 'ok' : 'bad');
+    });
+    renderVerdict(rows);
+    setMsg(okN === rows.length ? '本题全部正确，按「下一题」继续。'
+      : '本题错 ' + (rows.length - okN) + ' 项，修正后按「下一题」继续。', okN === rows.length ? 'ok' : 'err');
+    okN === rows.length ? sfxOk() : sfxBad();
+    $('#btnSubmit').textContent = '下一题';
+    $('#btnSubmit').dataset.next = '1';
+    return;
+  }
+  nextQuestion();       // 考试模式：不即时显示对错，直接下一题
+}
+function nextQuestion(){
+  const btn = $('#btnSubmit');
+  if(btn){ btn.textContent = '提交本题'; delete btn.dataset.next; }
+  if(S.idx + 1 >= S.cases.length){ finishPaper(false); return; }
+  S.idx++;
+  loadQuestion();
+  /* 考试模式的提交反馈必须写在 loadQuestion 之后：
+     loadQuestion → clearForm 会把判定区重置成提示语，写在前面等于白写 */
+  const last = S.recs[S.recs.length - 1];
+  if(S.mode === 'exam' && last && last.q === S.idx){
+    $('#verdict').innerHTML = '<div class="vrow"><span class="vlab">第 ' + last.q + ' 题已提交</span>' +
+      '<span class="vhint">用时 ' + last.sec + ' 秒 · 考试模式不即时判分，交卷后统一给出成绩与逐题错项</span></div>';
+  }
+}
+const isNextMode = () => !!($('#btnSubmit') && $('#btnSubmit').dataset.next === '1');
+function onPrimary(){ if(isNextMode()) nextQuestion(); else submitQuestion(); }
+
+/* ================= 交卷与成绩单 ================= */
+function finishPaper(auto){
+  if(S.phase === 'finished') return;
+  S.phase = 'finished';
+  stopTimer();
+  /* 未作答的题按全错计入，分母用该题自己的字段数：
+     混合练习时各题型字段数不同，不能用 S.type 统一取（S.type 此时可能是 __mix） */
+  for(let i = S.recs.length; i < S.cases.length; i++){
+    const ct = TYPES[S.cases[i].type];
+    S.recs.push({ q:i + 1, type:S.cases[i].type, ok:0, total:enterKeys(ct).length, sec:0, wrong:[], blank:true });
+  }
+  const fullOk = S.recs.filter(r => r.ok === r.total).length;
+  const gotN = S.recs.reduce((m, r) => m + r.ok, 0);
+  const allN = S.recs.reduce((m, r) => m + r.total, 0);
+  $('#rQ').textContent = fullOk + '/' + S.recs.length;
+  $('#rField').textContent = (allN ? gotN / allN * 100 : 0).toFixed(1) + '%';
+  $('#rTime').textContent = Math.floor(S.used/60) + '分' + pad2(S.used%60) + '秒';
+  $('#rAvg').textContent = S.recs.length ? (S.used / S.recs.length).toFixed(1) : '0';
+
+  const rank = Object.keys(S.fieldErr).map(k => [k, S.fieldErr[k]]).sort((a,b) => b[1] - a[1]).slice(0, 6);
+  const maxE = rank.length ? rank[0][1] : 1;
+  $('#rRank').innerHTML = rank.length
+    ? rank.map(r => '<div><span class="rk">' + r[0] + '</span>错 ' + r[1] + ' 次 ' +
+        '<span class="bar" style="width:' + Math.round(r[1]/maxE*130) + 'px"></span></div>').join('')
+    : '<div style="color:#8a97a6">本轮没有错项 🎉</div>';
+  $('#rDetail').innerHTML = S.recs.map(r => {
+    const tag = S.mix ? '[' + TYPES[r.type].name + '] ' : '';
+    if(r.blank) return '<div><span class="dq">第 ' + r.q + ' 题 ' + tag + '</span>：<span class="dm">未作答</span></div>';
+    if(!r.wrong.length) return '<div><span class="dq">第 ' + r.q + ' 题 ' + tag + '</span>：全对（' + r.sec + ' 秒）</div>';
+    return '<div><span class="dq">第 ' + r.q + ' 题 ' + tag + '</span>：错 ' + r.wrong.length + ' 项（' + r.sec + ' 秒）— ' +
+      r.wrong.map(w => w.label + '（' + (w.got === '' ? '未录入' : w.got) + '／应 ' + w.want + '）').join('；') + '</div>';
+  }).join('');
+  sfxDone();
+  $('#overlay').classList.add('show');
+  setMsg(auto ? '时间到，已自动交卷。' : '已交卷，成绩见成绩单。', auto ? 'err' : 'ok');
+}
+
+/* ================= 设置与启动 ================= */
+function readOpts(){
+  S.type = $('#optType').value;
+  S.mix  = S.type === '__mix';
+  S.mode = $('#optMode').value;
+  S.total = +$('#optTotal').value;
+  S.limitSec = +$('#optTime').value * 60;
+  S.cardAssist = $('#optCard').checked;
+  S.sfx = $('#optSfx').checked;
+}
+function buildCases(){
+  const codes = Object.keys(TYPES);
+  const list = [];
+  for(let i=0;i<S.total;i++){
+    const code = S.mix ? pick(codes) : S.type;
+    list.push({ type:code, d:TYPES[code].gen() });
+  }
+  return list;
+}
+function restart(){
+  stopTimer();
+  readOpts();
+  S.cases = buildCases();
+  S.idx = 0; S.phase = 'running'; S.queried = false; S.used = 0;
+  S.recs = []; S.fieldErr = {}; S.curType = null;
+  $('#overlay').classList.remove('show');
+  loadQuestion();
+  startTimer();
+}
+
+/* ================= 键盘流 ================= */
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Enter' && e.key !== 'Tab') return;
+  const el = e.target;
+  if(el && el.id === 'btnSubmit'){ e.preventDefault(); onPrimary(); return; }
+  if(!el || !el.classList || !el.classList.contains('ipt')) return;
+  e.preventDefault();            // Enter/Tab 都用于推进录入，拦掉默认行为避免误触按钮
+  advance(el);
+});
+/* 录入框依次前进；系统带出的只读框不参与，落回第一个空着的录入框 */
+function advance(el){
+  const ks = enterKeys(curTypeDef());
+  const i = ks.indexOf(String(el.id).replace(/^fld_/, ''));
+  if(i === -1){
+    const empty = ks.find(k => !norm($('#' + fid(k)).value));
+    focusField(fid(empty || ks[0]));
+    return;
+  }
+  if(i === ks.length - 1){ onPrimary(); return; }
+  focusField(fid(ks[i + 1]));
+}
+
+/* ================= 表单事件绑定（表单重画后需重新绑定） ================= */
+function bindForm(){
+  const q = $('#btnQuery'), pre = $('#btnPrecheck'), rc = $('#btnReadCard'), sub = $('#btnSubmit');
+  if(q)   q.addEventListener('click', doQuery);
+  if(sub) sub.addEventListener('click', onPrimary);
+  if(pre) pre.addEventListener('click', () => setMsg('销户预检查通过：账户无在途业务、无冻结，可以核销。', 'ok'));
+  if(rc)  rc.addEventListener('click', () => {
+    if(S.phase !== 'running') return;
+    if(!S.cardAssist){ setMsg('本练习需手工录入证件信息（如需读卡带入，请在顶部勾选「读卡带入证件信息」）。', 'err'); return; }
+    const d = curData(), t = curTypeDef();
+    Object.keys(t.fields).forEach(k => {
+      if(t.fields[k].ro || !/^(idType|idNo|opName|idStart|idEnd)$/.test(k)) return;
+      const el = $('#' + fid(k)); if(el) el.value = d[k];
+    });
+    setMsg('已读取身份证件信息并带入。', 'ok');
+  });
+  /* 系统自动生成的字段（如金额大写）：跟着来源字段实时派生，不参与判分 */
+  const t = curTypeDef();
+  Object.keys(t.fields).forEach(k => {
+    const f = t.fields[k];
+    if(!f.deriveFrom) return;
+    const src = $('#' + fid(f.deriveFrom)), dst = $('#' + fid(k));
+    if(!src || !dst) return;
+    const upd = () => {
+      const v = norm(src.value);
+      dst.value = /^\d+(\.\d+)?$/.test(v) ? f.derive(v) : '';
+    };
+    src.addEventListener('input', upd);
+    upd();
+  });
+}
+
+/* ================= 顶部控件 ================= */
+$('#optType').innerHTML = Object.keys(TYPES).map(c =>
+  '<option value="' + c + '">' + TYPES[c].name + '</option>').join('') +
+  '<option value="__mix">混合练习（全部题型）</option>';
+
+$('#btnPaper').addEventListener('click', () => {
+  if(S.phase !== 'running') return;
+  if(confirm('确定要提交试卷吗？未作答的题目将按错处理。')) finishPaper(false);
+});
+$('#btnRestart').addEventListener('click', () => { if(confirm('重新开始一轮新的练习？当前进度会清空。')) restart(); });
+['#optType','#optMode','#optTotal','#optTime'].forEach(s => {
+  $(s).addEventListener('change', () => { if(confirm('修改设置将重新开始一轮练习，继续吗？')) restart(); else readOpts(); });
+});
+$('#optCard').addEventListener('change', readOpts);
+$('#optSfx').addEventListener('change', () => { S.sfx = $('#optSfx').checked; if(S.sfx) sfxOk(); });
+$('#btnAgain').addEventListener('click', restart);
+$('#btnClose').addEventListener('click', () => $('#overlay').classList.remove('show'));
+
+/* ================= 启动 ================= */
+restart();
+</script>
+</body>
+</html>
